@@ -293,6 +293,9 @@ basicKnownKeyNames
         , guardMName
         , liftMName
         , mzipName
+
+        -- Monoid DO notation
+        , mappendName
     ]
 
 genericTyConNames :: [Name]
@@ -327,7 +330,7 @@ gHC_PRIM, gHC_TYPES, gHC_GENERICS,
     gHC_CONC, gHC_IO, gHC_IO_Exception,
     gHC_ST, gHC_ARR, gHC_STABLE, gHC_PTR, gHC_ERR, gHC_REAL,
     gHC_FLOAT, gHC_TOP_HANDLER, sYSTEM_IO, dYNAMIC, tYPEABLE, tYPEABLE_INTERNAL, gENERICS,
-    dOTNET, rEAD_PREC, lEX, gHC_INT, gHC_WORD, mONAD, mONAD_FIX, mONAD_ZIP,
+    dOTNET, rEAD_PREC, lEX, gHC_INT, gHC_WORD, mONAD, mONAD_FIX, mONAD_ZIP, mONOID,
     aRROW, cONTROL_APPLICATIVE, gHC_DESUGAR, rANDOM, gHC_EXTS,
     cONTROL_EXCEPTION_BASE :: Module
 
@@ -375,6 +378,7 @@ gHC_WORD        = mkBaseModule (fsLit "GHC.Word")
 mONAD           = mkBaseModule (fsLit "Control.Monad")
 mONAD_FIX       = mkBaseModule (fsLit "Control.Monad.Fix")
 mONAD_ZIP       = mkBaseModule (fsLit "Control.Monad.Zip")
+mONOID          = mkBaseModule (fsLit "Data.Monoid")
 aRROW           = mkBaseModule (fsLit "Control.Arrow")
 cONTROL_APPLICATIVE = mkBaseModule (fsLit "Control.Applicative")
 gHC_DESUGAR = mkBaseModule (fsLit "GHC.Desugar")
@@ -1010,6 +1014,9 @@ guardMName         = varQual mONAD (fsLit "guard") guardMIdKey
 liftMName          = varQual mONAD (fsLit "liftM") liftMIdKey
 mzipName           = varQual mONAD_ZIP (fsLit "mzip") mzipIdKey
 
+-- Monoid DO notation
+mappendName :: Name
+mappendName        = varQual mONOID (fsLit "mappend") mappendIdKey
 
 -- Annotation type checking
 toAnnotationWrapperName :: Name
@@ -1582,6 +1589,9 @@ guardMIdKey     = mkPreludeMiscIdUnique 194
 liftMIdKey      = mkPreludeMiscIdUnique 195
 mzipIdKey       = mkPreludeMiscIdUnique 196
 
+-- Monoid DO notation
+mappendIdKey :: Unique
+mappendIdKey = mkPreludeMiscIdUnique 197
 
 ---------------- Template Haskell -------------------
 --      USES IdUniques 200-499

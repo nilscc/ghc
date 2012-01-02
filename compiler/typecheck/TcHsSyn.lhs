@@ -813,12 +813,13 @@ zonkStmt env (RecStmt { recS_stmts = segStmts, recS_later_ids = lvs, recS_rec_id
                          , recS_later_rets = new_later_rets
                          , recS_rec_rets = new_rec_rets, recS_ret_ty = new_ret_ty }) }
 
-zonkStmt env (ExprStmt expr then_op guard_op ty)
-  = zonkLExpr env expr		`thenM` \ new_expr ->
-    zonkExpr env then_op	`thenM` \ new_then ->
-    zonkExpr env guard_op	`thenM` \ new_guard ->
+zonkStmt env (ExprStmt expr then_op mappend_op guard_op ty)
+  = zonkLExpr env expr		  `thenM` \ new_expr ->
+    zonkExpr env then_op	  `thenM` \ new_then ->
+    zonkExpr env mappend_op `thenM` \ new_mappend ->
+    zonkExpr env guard_op	  `thenM` \ new_guard ->
     zonkTcTypeToType env ty	`thenM` \ new_ty ->
-    returnM (env, ExprStmt new_expr new_then new_guard new_ty)
+    returnM (env, ExprStmt new_expr new_then new_mappend new_guard new_ty)
 
 zonkStmt env (LastStmt expr ret_op)
   = zonkLExpr env expr		`thenM` \ new_expr ->

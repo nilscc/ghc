@@ -697,7 +697,7 @@ dsCmdStmt
 --		---> arr (\ (xs) -> ((xs1),(xs'))) >>> first c >>>
 --			arr snd >>> ss
 
-dsCmdStmt ids local_vars out_ids (ExprStmt cmd _ _ c_ty) env_ids = do
+dsCmdStmt ids local_vars out_ids (ExprStmt cmd _ _ _ c_ty) env_ids = do
     (core_cmd, fv_cmd, env_ids1) <- dsfixCmd ids local_vars [] c_ty cmd
     core_mux <- matchEnvStack env_ids []
         (mkCorePairExpr (mkBigCoreVarTup env_ids1) (mkBigCoreVarTup out_ids))

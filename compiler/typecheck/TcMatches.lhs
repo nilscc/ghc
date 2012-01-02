@@ -41,6 +41,7 @@ import Outputable
 import Util
 import SrcLoc
 import FastString
+import DynFlags
 
 -- Create chunkified tuple tybes for monad comprehensions
 import MkCore
@@ -345,10 +346,10 @@ tcStmtsAndThen ctxt stmt_chk (L loc stmt : stmts) res_ty thing_inside
 ---------------------------------------------------
 
 tcGuardStmt :: TcStmtChecker
-tcGuardStmt _ (ExprStmt guard _ _ _) res_ty thing_inside
+tcGuardStmt _ (ExprStmt guard _ _ _ _) res_ty thing_inside
   = do	{ guard' <- tcMonoExpr guard boolTy
 	; thing  <- thing_inside res_ty
-	; return (ExprStmt guard' noSyntaxExpr noSyntaxExpr boolTy, thing) }
+	; return (ExprStmt guard' noSyntaxExpr noSyntaxExpr noSyntaxExpr boolTy, thing) }
 
 tcGuardStmt ctxt (BindStmt pat rhs _ _) res_ty thing_inside
   = do	{ (rhs', rhs_ty) <- tcInferRhoNC rhs	-- Stmt has a context already
@@ -391,10 +392,10 @@ tcLcStmt m_tc ctxt (BindStmt pat rhs _ _) elt_ty thing_inside
 	; return (BindStmt pat' rhs' noSyntaxExpr noSyntaxExpr, thing) }
 
 -- A boolean guard
-tcLcStmt _ _ (ExprStmt rhs _ _ _) elt_ty thing_inside
+tcLcStmt _ _ (ExprStmt rhs _ _ _ _) elt_ty thing_inside
   = do	{ rhs'  <- tcMonoExpr rhs boolTy
 	; thing <- thing_inside elt_ty
-	; return (ExprStmt rhs' noSyntaxExpr noSyntaxExpr boolTy, thing) }
+	; return (ExprStmt rhs' noSyntaxExpr noSyntaxExpr noSyntaxExpr boolTy, thing) }
 
 -- ParStmt: See notes with tcMcStmt
 tcLcStmt m_tc ctxt (ParStmt bndr_stmts_s _ _ _) elt_ty thing_inside
@@ -522,7 +523,7 @@ tcMcStmt ctxt (BindStmt pat rhs bind_op fail_op) res_ty thing_inside
 --
 --   [ body | stmts, expr ]  ->  expr :: m Bool
 --
-tcMcStmt _ (ExprStmt rhs then_op guard_op _) res_ty thing_inside
+tcMcStmt _ (ExprStmt rhs then_op _ guard_op _) res_ty thing_inside
   = do	{ -- Deal with rebindable syntax:
           --    guard_op :: test_ty -> rhs_ty
           --    then_op  :: rhs_ty -> new_res_ty -> res_ty
@@ -536,7 +537,7 @@ tcMcStmt _ (ExprStmt rhs then_op guard_op _) res_ty thing_inside
         ; then_op'   <- tcSyntaxOp MCompOrigin then_op
 		                   (mkFunTys [rhs_ty, new_res_ty] res_ty)
 	; thing      <- thing_inside new_res_ty
-	; return (ExprStmt rhs' then_op' guard_op' rhs_ty, thing) }
+	; return (ExprStmt rhs' then_op' noSyntaxExpr guard_op' rhs_ty, thing) }
 
 -- Grouping statements
 --
@@ -783,18 +784,39 @@ tcDoStmt ctxt (BindStmt pat rhs bind_op fail_op) res_ty thing_inside
 	; return (BindStmt pat' rhs' bind_op' fail_op', thing) }
 
 
-tcDoStmt _ (ExprStmt rhs then_op _ _) res_ty thing_inside
+tcDoStmt ctxt (ExprStmt rhs then_op mappend_op _ _) res_ty thing_inside
   = do	{   	-- Deal with rebindable syntax; 
                 --   (>>) :: rhs_ty -> new_res_ty -> res_ty
 		-- See also Note [Treat rebindable syntax first]
           rhs_ty     <- newFlexiTyVarTy liftedTypeKind
         ; new_res_ty <- newFlexiTyVarTy liftedTypeKind
-	; then_op' <- tcSyntaxOp DoOrigin then_op 
-			   (mkFunTys [rhs_ty, new_res_ty] res_ty)
+        ; let fun_ty  = mkFunTys [rhs_ty, new_res_ty] res_ty
 
-        ; rhs' <- tcMonoExprNC rhs rhs_ty
-	; thing <- thing_inside new_res_ty
-	; return (ExprStmt rhs' then_op' noSyntaxExpr rhs_ty, thing) }
+          -- use mappend instead of then_op if -XMonoidDo is set and (TODO)
+          -- the rhs is no monad
+        ; monoid_ok    <- xoptM Opt_MonoidDo
+        ; (msgs,mthen) <- tryTcLIE $ tcSyntaxOp DoOrigin then_op fun_ty
+        ; (then_op',rhs_ty',new_res_ty') <- case mthen of
+            Just t -> do
+                { traceTc "Using `then_op` with types" (ppr fun_ty)
+                ; return (t,rhs_ty,new_res_ty) }
+            Nothing
+              | monoid_ok && isDoExpr ctxt -> do
+                { traceTc "Using `mappend_op` instead of `then_op`." empty
+                ; rhs_ty'     <- newFlexiTyVarTy liftedTypeKind
+                ; new_res_ty' <- newFlexiTyVarTy liftedTypeKind
+                ; let fun_ty'  = mkFunTys [rhs_ty', new_res_ty'] res_ty
+                ; r           <- tcSyntaxOp MonoidDoOrigin mappend_op fun_ty'
+                ; return (r,rhs_ty',new_res_ty') }
+              | otherwise -> do
+                { traceTc "`then_op` failed to parse, current fun_ty:" (ppr fun_ty)
+                ; addMessages msgs
+                ; failM }
+
+        ; rhs'  <- tcMonoExprNC rhs rhs_ty'
+        ; traceTc "tcDoStmt `ExprStmt` final rhs:" (ppr rhs')
+	; thing <- thing_inside new_res_ty'
+	; return (ExprStmt rhs' then_op' noSyntaxExpr noSyntaxExpr rhs_ty', thing) }
 
 tcDoStmt ctxt (RecStmt { recS_stmts = stmts, recS_later_ids = later_names
                        , recS_rec_ids = rec_names, recS_ret_fn = ret_op

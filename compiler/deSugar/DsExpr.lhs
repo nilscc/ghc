@@ -728,7 +728,7 @@ dsDo stmts
       = ASSERT( null stmts ) dsLExpr body
         -- The 'return' op isn't used for 'do' expressions
 
-    go _ (ExprStmt rhs then_expr _ _) stmts
+    go _ (ExprStmt rhs then_expr _ _ _) stmts
       = do { rhs2 <- dsLExpr rhs
            ; warnDiscardedDoBindings rhs (exprType rhs2) 
            ; then_expr2 <- dsExpr then_expr

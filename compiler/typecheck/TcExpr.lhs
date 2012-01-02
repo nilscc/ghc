@@ -429,7 +429,12 @@ tcExpr (HsIf (Just fun) pred b1 b2) res_ty   -- Note [Rebindable syntax for if]
        ; return (HsIf (Just fun') pred' b1' b2') }
 
 tcExpr (HsDo do_or_lc stmts _) res_ty
-  = tcDoStmts do_or_lc stmts res_ty
+  = -- pprPanic "tcExpr: do_or_lc" (vcat $ map (fs . unLoc) stmts)
+    tcDoStmts do_or_lc stmts res_ty
+ -- where
+ --  fs (ExprStmt e t m _ _) = ptext (sLit "ExprStmt:") <+> nest 2 (vcat [ppr e, ppr t, ppr m])
+ --  fs (LastStmt e _)       = ptext (sLit "Last:    ") <+> nest 2 (ppr e)
+ --  fs e                    = ptext (sLit "Other:   ") <+> nest 2 (ppr e)
 
 tcExpr (HsProc pat cmd) res_ty
   = do	{ (pat', cmd', coi) <- tcProc pat cmd res_ty
@@ -935,7 +940,7 @@ tcSyntaxOp :: CtOrigin -> HsExpr Name -> TcType -> TcM (HsExpr TcId)
 -- This version assumes res_ty is a monotype
 tcSyntaxOp orig (HsVar op) res_ty = do { (expr, rho) <- tcInferIdWithOrig orig op
                                        ; tcWrapResult expr rho res_ty }
-tcSyntaxOp _ other 	   _      = pprPanic "tcSyntaxOp" (ppr other) 
+tcSyntaxOp orig other 	   _      = pprPanic "tcSyntaxOp" (ppr other <+> ppr orig) 
 \end{code}
 
 

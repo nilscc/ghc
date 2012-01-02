@@ -1292,7 +1292,7 @@ runPlans (p:ps) = tryTcLIE_ (runPlans ps) p
 
 --------------------
 mkPlan :: LStmt Name -> TcM PlanResult
-mkPlan (L loc (ExprStmt expr _ _ _))	-- An expression typed at the prompt 
+mkPlan (L loc (ExprStmt expr _ _ _ _))	-- An expression typed at the prompt 
   = do	{ uniq <- newUnique		-- is treated very specially
         ; let fresh_it  = itName uniq loc
 	      the_bind  = L loc $ mkTopFunBind (L loc fresh_it) matches
@@ -1302,7 +1302,7 @@ mkPlan (L loc (ExprStmt expr _ _ _))	-- An expression typed at the prompt
               bind_stmt = L loc $ BindStmt (L loc (VarPat fresh_it)) expr
 					   (HsVar bindIOName) noSyntaxExpr 
 	      print_it  = L loc $ ExprStmt (nlHsApp (nlHsVar printName) (nlHsVar fresh_it))
-			          	   (HsVar thenIOName) noSyntaxExpr placeHolderType
+			          	   (HsVar thenIOName) noSyntaxExpr noSyntaxExpr placeHolderType
 
 	-- The plans are:
 	--	[it <- e; print it]	but not if it::()
@@ -1330,7 +1330,7 @@ mkPlan (L loc (ExprStmt expr _ _ _))	-- An expression typed at the prompt
 mkPlan stmt@(L loc (BindStmt {}))
   | [v] <- collectLStmtBinders stmt		-- One binder, for a bind stmt 
   = do	{ let print_v  = L loc $ ExprStmt (nlHsApp (nlHsVar printName) (nlHsVar v))
-			          	  (HsVar thenIOName) noSyntaxExpr placeHolderType
+			          	  (HsVar thenIOName) noSyntaxExpr noSyntaxExpr placeHolderType
 
 	; print_bind_result <- doptM Opt_PrintBindResult
 	; let print_plan = do

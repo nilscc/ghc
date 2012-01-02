@@ -337,10 +337,10 @@ tcArrDoStmt env _ (LastStmt rhs _) res_ty thing_inside
 	; thing <- thing_inside (panic "tcArrDoStmt")
 	; return (LastStmt rhs' noSyntaxExpr, thing) }
 
-tcArrDoStmt env _ (ExprStmt rhs _ _ _) res_ty thing_inside
+tcArrDoStmt env _ (ExprStmt rhs _ _ _ _) res_ty thing_inside
   = do	{ (rhs', elt_ty) <- tc_arr_rhs env rhs
 	; thing 	 <- thing_inside res_ty
-	; return (ExprStmt rhs' noSyntaxExpr noSyntaxExpr elt_ty, thing) }
+	; return (ExprStmt rhs' noSyntaxExpr noSyntaxExpr noSyntaxExpr elt_ty, thing) }
 
 tcArrDoStmt env ctxt (BindStmt pat rhs _ _) res_ty thing_inside
   = do	{ (rhs', pat_ty) <- tc_arr_rhs env rhs

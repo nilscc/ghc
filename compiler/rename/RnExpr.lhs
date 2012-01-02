@@ -460,8 +460,8 @@ convertOpFormsCmd c = c
 convertOpFormsStmt :: StmtLR id id -> StmtLR id id
 convertOpFormsStmt (BindStmt pat cmd _ _)
   = BindStmt pat (convertOpFormsLCmd cmd) noSyntaxExpr noSyntaxExpr
-convertOpFormsStmt (ExprStmt cmd _ _ _)
-  = ExprStmt (convertOpFormsLCmd cmd) noSyntaxExpr noSyntaxExpr placeHolderType
+convertOpFormsStmt (ExprStmt cmd _ _ _ _)
+  = ExprStmt (convertOpFormsLCmd cmd) noSyntaxExpr noSyntaxExpr noSyntaxExpr placeHolderType
 convertOpFormsStmt stmt@(RecStmt { recS_stmts = stmts })
   = stmt { recS_stmts = map (fmap convertOpFormsStmt) stmts }
 convertOpFormsStmt stmt = stmt
@@ -542,7 +542,7 @@ methodNamesLStmt = methodNamesStmt . unLoc
 
 methodNamesStmt :: StmtLR Name Name -> FreeVars
 methodNamesStmt (LastStmt cmd _)                 = methodNamesLCmd cmd
-methodNamesStmt (ExprStmt cmd _ _ _)             = methodNamesLCmd cmd
+methodNamesStmt (ExprStmt cmd _ _ _ _)           = methodNamesLCmd cmd
 methodNamesStmt (BindStmt _ cmd _ _)             = methodNamesLCmd cmd
 methodNamesStmt (RecStmt { recS_stmts = stmts }) = methodNamesStmts stmts `addOneFV` loopAName
 methodNamesStmt (LetStmt _)                      = emptyFVs
@@ -695,18 +695,22 @@ rnStmt ctxt (L loc (LastStmt expr _)) thing_inside
 	; return (([L loc (LastStmt expr' ret_op)], thing),
 		  fv_expr `plusFV` fvs1 `plusFV` fvs3) }
 
-rnStmt ctxt (L loc (ExprStmt expr _ _ _)) thing_inside
+rnStmt ctxt (L loc (ExprStmt expr _ _ _ _)) thing_inside
   = do	{ (expr', fv_expr) <- rnLExpr expr
 	; (then_op, fvs1)  <- lookupStmtName ctxt thenMName
-	; (guard_op, fvs2) <- if isListCompExpr ctxt
+        ; monoid_ok <- xoptM Opt_MonoidDo
+        ; (mappend_op, fvs2) <- if isDoExpr ctxt && monoid_ok
+                                then lookupStmtName ctxt mappendName
+                                else return (noSyntaxExpr, emptyFVs)
+	; (guard_op, fvs3) <- if isListCompExpr ctxt
                               then lookupStmtName ctxt guardMName
 			      else return (noSyntaxExpr, emptyFVs)
 			      -- Only list/parr/monad comprehensions use 'guard'
 			      -- Also for sub-stmts of same eg [ e | x<-xs, gd | blah ]
 			      -- Here "gd" is a guard
-	; (thing, fvs3)    <- thing_inside []
-	; return (([L loc (ExprStmt expr' then_op guard_op placeHolderType)], thing),
-		  fv_expr `plusFV` fvs1 `plusFV` fvs2 `plusFV` fvs3) }
+	; (thing, fvs4)    <- thing_inside []
+	; return (([L loc (ExprStmt expr' then_op mappend_op guard_op placeHolderType)]
+            ,thing), plusFVs [fv_expr, fvs1, fvs2, fvs3, fvs4]) }
 
 rnStmt ctxt (L loc (BindStmt pat expr _ _)) thing_inside
   = do	{ (expr', fv_expr) <- rnLExpr expr
@@ -947,8 +951,8 @@ rn_rec_stmt_lhs :: MiniFixityEnv
                    -- so we don't bother to compute it accurately in the other cases
                 -> RnM [(LStmtLR Name RdrName, FreeVars)]
 
-rn_rec_stmt_lhs _ (L loc (ExprStmt expr a b c)) 
-  = return [(L loc (ExprStmt expr a b c), emptyFVs)]
+rn_rec_stmt_lhs _ (L loc (ExprStmt expr a b c d)) 
+  = return [(L loc (ExprStmt expr a b c d), emptyFVs)]
 
 rn_rec_stmt_lhs _ (L loc (LastStmt expr a)) 
   = return [(L loc (LastStmt expr a), emptyFVs)]
@@ -1008,11 +1012,11 @@ rn_rec_stmt _ (L loc (LastStmt expr _)) _
 	; return [(emptyNameSet, fv_expr `plusFV` fvs1, emptyNameSet,
                    L loc (LastStmt expr' ret_op))] }
 
-rn_rec_stmt _ (L loc (ExprStmt expr _ _ _)) _
+rn_rec_stmt _ (L loc (ExprStmt expr _ _ _ _)) _
   = rnLExpr expr `thenM` \ (expr', fvs) ->
     lookupSyntaxName thenMName	`thenM` \ (then_op, fvs1) ->
-    return [(emptyNameSet, fvs `plusFV` fvs1, emptyNameSet,
-	      L loc (ExprStmt expr' then_op noSyntaxExpr placeHolderType))]
+    return [(emptyNameSet, plusFVs [fvs, fvs1], emptyNameSet,
+	      L loc (ExprStmt expr' then_op noSyntaxExpr noSyntaxExpr placeHolderType))]
 
 rn_rec_stmt _ (L loc (BindStmt pat' expr _ _)) fv_pat
   = rnLExpr expr		`thenM` \ (expr', fv_expr) ->
@@ -1219,9 +1223,9 @@ checkLastStmt ctxt lstmt@(L loc stmt)
   where
     check_do	-- Expect ExprStmt, and change it to LastStmt
       = case stmt of 
-          ExprStmt e _ _ _ -> return (L loc (mkLastStmt e))
-          LastStmt {}      -> return lstmt   -- "Deriving" clauses may generate a
-	  	   	      	     	     -- LastStmt directly (unlike the parser)
+          ExprStmt e _ _ _ _ -> return (L loc (mkLastStmt e))
+          LastStmt {}        -> return lstmt   -- "Deriving" clauses may generate a
+	  	   	      	     	         -- LastStmt directly (unlike the parser)
 	  _                -> do { addErr (hang last_error 2 (ppr stmt)); return lstmt }
     last_error = (ptext (sLit "The last statement in") <+> pprAStmtContext ctxt
                   <+> ptext (sLit "must be an expression"))

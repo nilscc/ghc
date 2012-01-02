@@ -610,10 +610,11 @@ addTickStmt _isGuard (BindStmt pat e bind fail) = do
 		(addTickLHsExprRHS e)
 		(addTickSyntaxExpr hpcSrcSpan bind)
 		(addTickSyntaxExpr hpcSrcSpan fail)
-addTickStmt isGuard (ExprStmt e bind' guard' ty) = do
-	liftM4 ExprStmt
+addTickStmt isGuard (ExprStmt e bind' mappend' guard' ty) = do
+	liftM5 ExprStmt
 		(addTick isGuard e)
 		(addTickSyntaxExpr hpcSrcSpan bind')
+		(addTickSyntaxExpr hpcSrcSpan mappend')
 		(addTickSyntaxExpr hpcSrcSpan guard')
 		(return ty)
 addTickStmt _isGuard (LetStmt binds) = do
@@ -811,10 +812,11 @@ addTickCmdStmt (LastStmt c ret) = do
 	liftM2 LastStmt
 		(addTickLHsCmd c)
 		(addTickSyntaxExpr hpcSrcSpan ret)
-addTickCmdStmt (ExprStmt c bind' guard' ty) = do
-	liftM4 ExprStmt
+addTickCmdStmt (ExprStmt c bind' mappend' guard' ty) = do
+	liftM5 ExprStmt
 		(addTickLHsCmd c)
 		(addTickSyntaxExpr hpcSrcSpan bind')
+		(addTickSyntaxExpr hpcSrcSpan mappend')
                 (addTickSyntaxExpr hpcSrcSpan guard')
 		(return ty)
 addTickCmdStmt (LetStmt binds) = do

@@ -873,6 +873,8 @@ data StmtLR idL idR
 
   | ExprStmt (LHsExpr idR)     -- See Note [ExprStmt]
              (SyntaxExpr idR) -- The (>>) operator
+             (SyntaxExpr idR) -- The alternative `mappend` function
+                              -- See note [MonoidDo]
              (SyntaxExpr idR) -- The `guard` operator; used only in MonadComp
                               -- See notes [Monad Comprehensions]
              PostTcType       -- Element type of the RHS (used for arrows)
@@ -1051,6 +1053,12 @@ A (RecStmt stmts) types as if you had written
 where v1..vn are the later_ids
       r1..rm are the rec_ids
 
+Note [MonoidDo]
+~~~~~~~~~~~~~~~
+With the `MonoidDo` extension the `mappend` function is used instead of `>>` if
+the current datatype has no `Monad` instance for desugaring do-notation.
+However, if a monadic bind statement is used a `Monad` instance is required.
+
 Note [Monad Comprehensions]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 Monad comprehensions require separate functions like 'return' and
@@ -1094,7 +1102,7 @@ pprStmt :: (OutputableBndr idL, OutputableBndr idR) => (StmtLR idL idR) -> SDoc
 pprStmt (LastStmt expr _)         = ifPprDebug (ptext (sLit "[last]")) <+> ppr expr
 pprStmt (BindStmt pat expr _ _)   = hsep [ppr pat, ptext (sLit "<-"), ppr expr]
 pprStmt (LetStmt binds)           = hsep [ptext (sLit "let"), pprBinds binds]
-pprStmt (ExprStmt expr _ _ _)     = ppr expr
+pprStmt (ExprStmt expr _ _ _ _)   = ppr expr
 pprStmt (ParStmt stmtss _ _ _)    = hsep (map doStmts stmtss)
   where doStmts stmts = ptext (sLit "| ") <> ppr stmts
 
@@ -1283,6 +1291,11 @@ data HsStmtContext id
 \end{code}
 
 \begin{code}
+isDoExpr :: HsStmtContext id -> Bool
+isDoExpr DoExpr  = True
+isDoExpr MDoExpr = True
+isDoExpr _       = False
+
 isListCompExpr :: HsStmtContext id -> Bool
 -- Uses syntax [ e | quals ]
 isListCompExpr ListComp  	 = True

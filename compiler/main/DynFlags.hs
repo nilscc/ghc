@@ -431,6 +431,7 @@ data ExtensionFlag
    | Opt_GeneralizedNewtypeDeriving
    | Opt_RecursiveDo
    | Opt_DoRec
+   | Opt_MonoidDo
    | Opt_PostfixOperators
    | Opt_TupleSections
    | Opt_PatternGuards
@@ -1928,6 +1929,7 @@ xFlags = [
   ( "RecursiveDo",                      Opt_RecursiveDo,     -- Enables 'mdo'
     deprecatedForExtension "DoRec"),
   ( "DoRec",                            Opt_DoRec, nop ),    -- Enables 'rec' keyword
+  ( "MonoidDo",                         Opt_MonoidDo, nop),
   ( "Arrows",                           Opt_Arrows, nop ),
   ( "ParallelArrays",                   Opt_ParallelArrays, nop ),
   ( "TemplateHaskell",                  Opt_TemplateHaskell, checkTemplateHaskellOk ),

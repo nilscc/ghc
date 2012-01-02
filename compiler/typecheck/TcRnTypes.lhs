@@ -1431,6 +1431,7 @@ data CtOrigin
   | StandAloneDerivOrigin -- Typechecking stand-alone deriving
   | DefaultOrigin	-- Typechecking a default decl
   | DoOrigin		-- Arising from a do expression
+  | MonoidDoOrigin      -- Arising from a do expression with the MonoidDo extension
   | MCompOrigin         -- Arising from a monad comprehension
   | IfOrigin            -- Arising from an if statement
   | ProcOrigin		-- Arising from a proc expression
@@ -1468,6 +1469,7 @@ pprO DerivOrigin	   = ptext (sLit "the 'deriving' clause of a data type declarat
 pprO StandAloneDerivOrigin = ptext (sLit "a 'deriving' declaration")
 pprO DefaultOrigin	   = ptext (sLit "a 'default' declaration")
 pprO DoOrigin	           = ptext (sLit "a do statement")
+pprO MonoidDoOrigin        = ptext (sLit "a monoid-do statement")
 pprO MCompOrigin           = ptext (sLit "a statement in a monad comprehension")
 pprO ProcOrigin	           = ptext (sLit "a proc expression")
 pprO (TypeEqOrigin eq)     = ptext (sLit "an equality") <+> ppr eq

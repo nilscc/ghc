@@ -228,7 +228,7 @@ mkGroupUsingStmt   ss u   = emptyTransStmt { trS_form = GroupForm, trS_stmts = s
 mkGroupByUsingStmt ss b u = emptyTransStmt { trS_form = GroupForm, trS_stmts = ss, trS_using = u, trS_by = Just b }
 
 mkLastStmt expr	    = LastStmt expr noSyntaxExpr
-mkExprStmt expr	    = ExprStmt expr noSyntaxExpr noSyntaxExpr placeHolderType
+mkExprStmt expr	    = ExprStmt expr noSyntaxExpr noSyntaxExpr noSyntaxExpr placeHolderType
 mkBindStmt pat expr = BindStmt pat expr noSyntaxExpr noSyntaxExpr
 
 emptyRecStmt = RecStmt { recS_stmts = [], recS_later_ids = [], recS_rec_ids = []

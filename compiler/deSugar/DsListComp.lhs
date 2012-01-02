@@ -215,7 +215,7 @@ deListComp (LastStmt body _ : quals) list
        ; return (mkConsExpr (exprType core_body) core_body list) }
 
         -- Non-last: must be a guard
-deListComp (ExprStmt guard _ _ _ : quals) list = do  -- rule B above
+deListComp (ExprStmt guard _ _ _ _ : quals) list = do  -- rule B above
     core_guard <- dsLExpr guard
     core_rest <- deListComp quals list
     return (mkIfThenElse core_guard core_rest list)
@@ -321,7 +321,7 @@ dfListComp c_id n_id (LastStmt body _ : quals)
        ; return (mkApps (Var c_id) [core_body, Var n_id]) }
 
         -- Non-last: must be a guard
-dfListComp c_id n_id (ExprStmt guard _ _ _  : quals) = do
+dfListComp c_id n_id (ExprStmt guard _ _ _ _  : quals) = do
     core_guard <- dsLExpr guard
     core_rest <- dfListComp c_id n_id quals
     return (mkIfThenElse core_guard core_rest (Var n_id))
@@ -524,7 +524,7 @@ dePArrComp (LastStmt e' _ : quals) pa cea
 --
 --  <<[:e' | b, qs:]>> pa ea = <<[:e' | qs:]>> pa (filterP (\pa -> b) ea)
 --
-dePArrComp (ExprStmt b _ _ _ : qs) pa cea = do
+dePArrComp (ExprStmt b _ _ _ _ : qs) pa cea = do
     filterP <- dsDPHBuiltin filterPVar
     let ty = parrElemType cea
     (clam,_) <- deLambda ty pa b
@@ -693,7 +693,7 @@ dsMcStmt (BindStmt pat rhs bind_op fail_op) stmts
 --
 --   [ .. | exp, stmts ]
 --
-dsMcStmt (ExprStmt exp then_exp guard_exp _) stmts
+dsMcStmt (ExprStmt exp then_exp _ guard_exp _) stmts
   = do { exp'       <- dsLExpr exp
        ; guard_exp' <- dsExpr guard_exp
        ; then_exp'  <- dsExpr then_exp

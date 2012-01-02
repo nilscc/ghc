@@ -626,7 +626,7 @@ cvtHsDo do_or_lc stmts
         ; let Just (stmts'', last') = snocView stmts'
         
 	; last'' <- case last' of
-		      L loc (ExprStmt body _ _ _) -> return (L loc (mkLastStmt body))
+		      L loc (ExprStmt body _ _ _ _) -> return (L loc (mkLastStmt body))
                       _ -> failWith (bad_last last')
 
 	; return $ HsDo do_or_lc (stmts'' ++ [last'']) void }
