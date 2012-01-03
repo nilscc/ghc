@@ -300,6 +300,7 @@ incorrect.
  vccurly        { L _ ITvccurly } -- virtual close curly (from layout)
  '['            { L _ ITobrack }
  ']'            { L _ ITcbrack }
+ '$++'          { L _ ITllayout }
  '[:'           { L _ ITopabrack }
  ':]'           { L _ ITcpabrack }
  '('            { L _ IToparen }
@@ -1455,6 +1456,7 @@ aexp2   :: { LHsExpr RdrName }
         | '(#' texp '#)'                { LL (ExplicitTuple [Present $2] Unboxed) }
         | '(#' tup_exprs '#)'           { LL (ExplicitTuple $2 Unboxed) }
 
+        | '$++' list_layout             { LL (unLoc $2) }
         | '[' list ']'                  { LL (unLoc $2) }
         | '[:' parr ':]'                { LL (unLoc $2) }
         | '_'                           { L1 EWildPat }
@@ -1557,6 +1559,27 @@ list :: { LHsExpr RdrName }
 lexps :: { Located [LHsExpr RdrName] }
         : lexps ',' texp                { LL (((:) $! $3) $! unLoc $1) }
         | texp ',' texp                 { LL [$3,$1] }
+
+--------------------------------------------------------------------------------
+-- List layout notation
+
+list_layout :: { LHsExpr RdrName }
+        : '[' list ']'                      { L1 $ unLoc $2 }
+        | vocurly llstmts close             { L1 $ mkHsDo ListLayout (unLoc $2) }
+
+llstmts :: { Located [LStmt RdrName] }
+        : llstmt llstmts_help               { LL ($1 : unLoc $2) }
+        | ';' llstmts                       { LL (unLoc $2) }
+        | {- empty -}                       { noLoc [] }
+
+llstmts_help :: { Located [LStmt RdrName] } -- might be empty
+        : ';' llstmts                       { LL (unLoc $2) }
+        | {- empty -}                       { noLoc [] }
+
+llstmt  :: { LStmt RdrName }
+        : exp                               { L1 $ mkExprStmt $1 }
+        | 'let' binds                       { LL $ LetStmt (unLoc $2) }
+
 
 -----------------------------------------------------------------------------
 -- List Comprehensions

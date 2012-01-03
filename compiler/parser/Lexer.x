@@ -514,6 +514,7 @@ data Token
   | ITvocurly
   | ITvccurly
   | ITobrack
+  | ITllayout                   -- $++ for list layouts with -XListLayouts
   | ITopabrack                  -- [:, for parallel arrays with -XParallelArrays
   | ITcpabrack                  -- :], for parallel arrays with -XParallelArrays
   | ITcbrack
@@ -668,6 +669,8 @@ reservedSymsFM = listToUFM $
        ,("=>",  ITdarrow,   always)
        ,("-",   ITminus,    always)
        ,("!",   ITbang,     always)
+
+       ,("$++", ITllayout,  listLayoutEnabled)
 
         -- For data T (a::*) = MkT
        ,("*", ITstar, always) -- \i -> kindSigsEnabled i || tyFamEnabled i)
@@ -993,7 +996,8 @@ sym con span buf len =
   case lookupUFM reservedSymsFM fs of
         Just (keyword,exts) -> do
                 b <- extension exts
-                if b then return (L span keyword)
+                if b then do maybe_layout keyword
+                             return (L span keyword)
                      else return (L span $! con fs)
         _other -> return (L span $! con fs)
   where
@@ -1071,13 +1075,14 @@ maybe_layout t = do -- If the alternative layout rule is enabled then
                     -- context.
                     alr <- extension alternativeLayoutRule
                     unless alr $ f t
-    where f ITdo    = pushLexState layout_do
-          f ITmdo   = pushLexState layout_do
-          f ITof    = pushLexState layout
-          f ITlet   = pushLexState layout
-          f ITwhere = pushLexState layout
-          f ITrec   = pushLexState layout
-          f _       = return ()
+    where f ITdo      = pushLexState layout_do
+          f ITmdo     = pushLexState layout_do
+          f ITof      = pushLexState layout
+          f ITlet     = pushLexState layout
+          f ITwhere   = pushLexState layout
+          f ITrec     = pushLexState layout
+          f ITllayout = pushLexState layout
+          f _         = return ()
 
 -- Pushing a new implicit layout context.  If the indentation of the
 -- next token is not greater than the previous layout context, then
@@ -1807,6 +1812,8 @@ safeHaskellBit :: Int
 safeHaskellBit = 26
 traditionalRecordSyntaxBit :: Int
 traditionalRecordSyntaxBit = 27
+llayoutBit :: Int
+llayoutBit = 28
 
 always :: Int -> Bool
 always           _     = True
@@ -1850,6 +1857,8 @@ nondecreasingIndentation :: Int -> Bool
 nondecreasingIndentation flags = testBit flags nondecreasingIndentationBit
 traditionalRecordSyntaxEnabled :: Int -> Bool
 traditionalRecordSyntaxEnabled flags = testBit flags traditionalRecordSyntaxBit
+listLayoutEnabled :: Int -> Bool
+listLayoutEnabled flags = testBit flags llayoutBit
 
 -- PState for parsing options pragmas
 --
@@ -1909,6 +1918,7 @@ mkPState flags buf loc =
                .|. nondecreasingIndentationBit `setBitIf` xopt Opt_NondecreasingIndentation flags
                .|. safeHaskellBit              `setBitIf` safeImportsOn                     flags
                .|. traditionalRecordSyntaxBit  `setBitIf` xopt Opt_TraditionalRecordSyntax  flags
+               .|. llayoutBit                  `setBitIf` xopt Opt_ListLayouts              flags
       --
       setBitIf :: Int -> Bool -> Int
       b `setBitIf` cond | cond      = bit b
@@ -2009,13 +2019,14 @@ lexTokenAlr = do mPending <- popPendingImplicitToken
                           return t
                  setAlrLastLoc (getLoc t)
                  case unLoc t of
-                     ITwhere -> setAlrExpectingOCurly (Just ALRLayoutWhere)
-                     ITlet   -> setAlrExpectingOCurly (Just ALRLayoutLet)
-                     ITof    -> setAlrExpectingOCurly (Just ALRLayoutOf)
-                     ITdo    -> setAlrExpectingOCurly (Just ALRLayoutDo)
-                     ITmdo   -> setAlrExpectingOCurly (Just ALRLayoutDo)
-                     ITrec   -> setAlrExpectingOCurly (Just ALRLayoutDo)
-                     _       -> return ()
+                     ITwhere   -> setAlrExpectingOCurly (Just ALRLayoutWhere)
+                     ITlet     -> setAlrExpectingOCurly (Just ALRLayoutLet)
+                     ITof      -> setAlrExpectingOCurly (Just ALRLayoutOf)
+                     ITdo      -> setAlrExpectingOCurly (Just ALRLayoutDo)
+                     ITmdo     -> setAlrExpectingOCurly (Just ALRLayoutDo)
+                     ITrec     -> setAlrExpectingOCurly (Just ALRLayoutDo)
+                     ITllayout -> setAlrExpectingOCurly (Just ALRLayoutDo)
+                     _         -> return ()
                  return t
 
 alternativeLayoutRuleToken :: RealLocated Token -> P (RealLocated Token)

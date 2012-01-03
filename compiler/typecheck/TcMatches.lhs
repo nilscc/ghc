@@ -256,6 +256,12 @@ tcDoStmts ListComp stmts res_ty
 	; stmts' <- tcStmts ListComp (tcLcStmt listTyCon) stmts elt_ty
 	; return $ mkHsWrapCo co (HsDo ListComp stmts' list_ty) }
 
+tcDoStmts ListLayout stmts res_ty
+  = do  { (co, elt_ty) <- matchExpectedListTy res_ty
+        ; let list_ty = mkListTy elt_ty
+        ; stmts' <- tcStmts ListLayout tcLayoutStmt stmts elt_ty
+        ; return $ mkHsWrapCo co (HsDo ListLayout stmts' list_ty) }
+
 tcDoStmts PArrComp stmts res_ty
   = do	{ (co, elt_ty) <- matchExpectedPArrTy res_ty
         ; let parr_ty = mkPArrTy elt_ty
@@ -358,6 +364,20 @@ tcGuardStmt ctxt (BindStmt pat rhs _ _) res_ty thing_inside
 
 tcGuardStmt _ stmt _ _
   = pprPanic "tcGuardStmt: unexpected Stmt" (ppr stmt)
+
+
+---------------------------------------------------
+--             List layout notation
+---------------------------------------------------
+
+tcLayoutStmt :: TcStmtChecker
+tcLayoutStmt _ (ExprStmt exp _ _ _) elt_ty thing_inside
+  = do  { exp'  <- tcMonoExpr exp elt_ty
+        ; thing <- thing_inside elt_ty
+        ; return (ExprStmt exp' noSyntaxExpr noSyntaxExpr elt_ty, thing) }
+
+tcLayoutStmt _ stmt _ _
+  = do  { pprPanic "tcLayoutStmt: unsupported stmt" (ppr stmt) }
 
 
 ---------------------------------------------------

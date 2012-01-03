@@ -1132,6 +1132,7 @@ pprDo GhciStmt    stmts = ptext (sLit "do")  <+> ppr_do_stmts stmts
 pprDo ArrowExpr   stmts = ptext (sLit "do")  <+> ppr_do_stmts stmts
 pprDo MDoExpr     stmts = ptext (sLit "mdo") <+> ppr_do_stmts stmts
 pprDo ListComp    stmts = brackets    $ pprComp stmts
+pprDo ListLayout  stmts = brackets    $ pprList stmts
 pprDo PArrComp    stmts = pa_brackets $ pprComp stmts
 pprDo MonadComp   stmts = brackets    $ pprComp stmts
 pprDo _           _     = panic "pprDo" -- PatGuard, ParStmtCxt
@@ -1145,6 +1146,9 @@ ppr_do_stmts stmts
 
 ppr_lc_stmts :: OutputableBndr id => [LStmt id] -> [SDoc]
 ppr_lc_stmts stmts = [ppr s <> comma | s <- stmts]
+
+pprList :: OutputableBndr id => [LStmt id] -> SDoc
+pprList stmts = interpp'SP stmts -- TODO
 
 pprComp :: OutputableBndr id => [LStmt id] -> SDoc
 pprComp quals	  -- Prints:  body | qual1, ..., qualn 
@@ -1268,6 +1272,7 @@ data HsMatchContext id  -- Context of a Match
 
 data HsStmtContext id
   = ListComp
+  | ListLayout
   | MonadComp
   | PArrComp                             -- Parallel array comprehension
 
@@ -1352,6 +1357,7 @@ pprStmtContext DoExpr          = ptext (sLit "'do' block")
 pprStmtContext MDoExpr         = ptext (sLit "'mdo' block")
 pprStmtContext ArrowExpr       = ptext (sLit "'do' block in an arrow command")
 pprStmtContext ListComp        = ptext (sLit "list comprehension")
+pprStmtContext ListLayout      = ptext (sLit "list layout block")
 pprStmtContext MonadComp       = ptext (sLit "monad comprehension")
 pprStmtContext PArrComp        = ptext (sLit "array comprehension")
 pprStmtContext (PatGuard ctxt) = ptext (sLit "pattern guard for") $$ pprMatchContext ctxt
@@ -1386,6 +1392,7 @@ matchContextErrString (StmtCtxt DoExpr)            = ptext (sLit "'do' block")
 matchContextErrString (StmtCtxt ArrowExpr)         = ptext (sLit "'do' block")
 matchContextErrString (StmtCtxt MDoExpr)           = ptext (sLit "'mdo' block")
 matchContextErrString (StmtCtxt ListComp)          = ptext (sLit "list comprehension")
+matchContextErrString (StmtCtxt ListLayout)        = ptext (sLit "list layout block")
 matchContextErrString (StmtCtxt MonadComp)         = ptext (sLit "monad comprehension")
 matchContextErrString (StmtCtxt PArrComp)          = ptext (sLit "array comprehension")
 \end{code}

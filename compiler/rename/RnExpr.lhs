@@ -852,6 +852,7 @@ lookupStmtName :: HsStmtContext Name -> Name -> RnM (HsExpr Name, FreeVars)
 lookupStmtName ctxt n 
   = case ctxt of
       ListComp        -> not_rebindable
+      ListLayout      -> not_rebindable
       PArrComp        -> not_rebindable
       ArrowExpr       -> not_rebindable
       PatGuard {}     -> not_rebindable
@@ -1276,9 +1277,18 @@ okStmt dflags ctxt stmt
       ArrowExpr        	 -> okDoStmt   dflags ctxt stmt
       GhciStmt         	 -> okDoStmt   dflags ctxt stmt
       ListComp         	 -> okCompStmt dflags ctxt stmt
+      ListLayout         -> okLayoutStmt stmt
       MonadComp        	 -> okCompStmt dflags ctxt stmt
       PArrComp         	 -> okPArrStmt dflags ctxt stmt
       TransStmtCtxt ctxt -> okStmt dflags ctxt stmt
+
+-------------
+okLayoutStmt :: Stmt RdrName -> Maybe SDoc
+okLayoutStmt stmt
+  = case stmt of
+      ExprStmt {} -> isOK
+      LetStmt  {} -> isOK
+      _           -> notOK
 
 -------------
 okPatGuardStmt :: Stmt RdrName -> Maybe SDoc

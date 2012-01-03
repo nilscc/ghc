@@ -335,12 +335,13 @@ dsExpr (HsLet binds body) = do
 -- We need the `ListComp' form to use `deListComp' (rather than the "do" form)
 -- because the interpretation of `stmts' depends on what sort of thing it is.
 --
-dsExpr (HsDo ListComp  stmts res_ty) = dsListComp stmts res_ty
-dsExpr (HsDo PArrComp  stmts _)      = dsPArrComp (map unLoc stmts)
-dsExpr (HsDo DoExpr    stmts _)      = dsDo stmts 
-dsExpr (HsDo GhciStmt  stmts _)      = dsDo stmts 
-dsExpr (HsDo MDoExpr   stmts _)      = dsDo stmts 
-dsExpr (HsDo MonadComp stmts _)      = dsMonadComp stmts
+dsExpr (HsDo ListComp   stmts res_ty) = dsListComp stmts res_ty
+dsExpr (HsDo ListLayout stmts res_ty) = dsListLayout stmts res_ty
+dsExpr (HsDo PArrComp   stmts _)      = dsPArrComp (map unLoc stmts)
+dsExpr (HsDo DoExpr     stmts _)      = dsDo stmts 
+dsExpr (HsDo GhciStmt   stmts _)      = dsDo stmts 
+dsExpr (HsDo MDoExpr    stmts _)      = dsDo stmts 
+dsExpr (HsDo MonadComp  stmts _)      = dsMonadComp stmts
 
 dsExpr (HsIf mb_fun guard_expr then_expr else_expr)
   = do { pred <- dsLExpr guard_expr
@@ -621,6 +622,21 @@ findField :: [HsRecField Id arg] -> Name -> [arg]
 findField rbinds lbl 
   = [rhs | HsRecField { hsRecFieldId = id, hsRecFieldArg = rhs } <- rbinds 
          , lbl == idName (unLoc id) ]
+\end{code}
+
+%--------------------------------------------------------------------
+
+Desugaring list layouts
+
+\begin{code}
+
+dsListLayout :: [LStmt Id] -> PostTcType -> DsM CoreExpr
+dsListLayout stmts ty
+  let go (ExprStmt e _ _ _) r = do e' <- dsExpr (unLoc e)
+      go (LetStmt  b)       r = dsLocalBinds b r
+      go s                  _ = pprPanic "dsListLayout" (ppr s)
+   in foldrM go (mkListExpr ty []) (map unLoc stmts)
+
 \end{code}
 
 %--------------------------------------------------------------------
